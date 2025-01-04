@@ -11,6 +11,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.bihell.dice.auth.annotation.Permission;
 import com.bihell.dice.commons.api.ApiResult;
+import com.bihell.dice.commons.api.RestResponse;
 import com.bihell.dice.commons.constant.AspectConstant;
 import com.bihell.dice.commons.constant.CommonConstant;
 import com.bihell.dice.config.properties.LogAopProperties;
@@ -38,19 +39,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.redis.core.ReactiveStreamOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 日志AOP
@@ -236,18 +236,39 @@ public class SysLogAop {
         try {
             if (result != null) {
                 SysLog sysLog = LOCAL_LOG.get();
-                ApiResult apiResult = (ApiResult) result;
-                if (apiResult != null) {
-                    boolean success = apiResult.isSuccess();
-                    sysLog.setResponseSuccess(success);
-                    sysLog.setResponseCode(apiResult.getCode());
-                    sysLog.setResponseMessage(apiResult.getMessage());
-                    Object responseData = apiResult.getResult();
-                    if (responseData != null) {
-                        String responseDataString = JSON.toJSONString(responseData);
-                        sysLog.setResponseData(responseDataString);
+
+                //modify by terry 20250104
+                //TOC端进入报错，没有使用ApiResult
+                if(result instanceof RestResponse<?>){
+                    RestResponse apiResult = (RestResponse) result;
+                    if (apiResult != null) {
+                        boolean success = apiResult.isSuccess();
+                        sysLog.setResponseSuccess(success);
+                        sysLog.setResponseCode(apiResult.getCode());
+                        sysLog.setResponseMessage(apiResult.getMsg());
+                        Object responseData = apiResult.getData();
+                        if (responseData != null) {
+                            String responseDataString = JSON.toJSONString(responseData);
+                            sysLog.setResponseData(responseDataString);
+                        }
                     }
                 }
+                else {
+                    ApiResult apiResult = (ApiResult) result;
+                    if (apiResult != null) {
+                        boolean success = apiResult.isSuccess();
+                        sysLog.setResponseSuccess(success);
+                        sysLog.setResponseCode(apiResult.getCode());
+                        sysLog.setResponseMessage(apiResult.getMessage());
+                        Object responseData = apiResult.getResult();
+                        if (responseData != null) {
+                            String responseDataString = JSON.toJSONString(responseData);
+                            sysLog.setResponseData(responseDataString);
+                        }
+                    }
+                }
+
+
                 printLog("response：" + JSON.toJSONString(result));
             } else {
                 printLog("response：");

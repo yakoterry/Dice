@@ -35,7 +35,19 @@ public class SecurityUtil {
      * @return 登陆用户信息
      */
     public static UserModel getUserModel() {
-        return (UserModel) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if(principal instanceof UserModel){
+            return (UserModel) principal;
+        }
+        else {
+            //modify by terry 20250104
+            //非正常登录(TOC端)验证用户如何处理待定，先不报错
+            SysUserModel sysUserModel = new SysUserModel();
+            sysUserModel.setUsername((String) principal);
+            UserModel userModel = new UserModel();
+            userModel.setUser(sysUserModel);
+            return userModel;
+        }
     }
 
     /**
